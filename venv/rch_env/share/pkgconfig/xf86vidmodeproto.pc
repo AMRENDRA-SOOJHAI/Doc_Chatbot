@@ -1,0 +1,7 @@
+prefix=/home/abcom/Downloads/Vs_Code/Rag_document_chatbot-main/venv/rch_env
+includedir=${prefix}/include
+ 
+Name: XF86VidModeProto
+Description: XF86VidMode extension headers
+Version: 2.3.1
+Cflags: -I${includedir}

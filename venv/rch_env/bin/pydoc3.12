@@ -1,0 +1,5 @@
+#!/home/abcom/Downloads/Vs_Code/Rag_document_chatbot-main/venv/rch_env/bin/python3.12
+
+import pydoc
+if __name__ == '__main__':
+    pydoc.cli()
