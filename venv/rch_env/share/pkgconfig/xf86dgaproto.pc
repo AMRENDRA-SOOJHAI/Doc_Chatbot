@@ -1,7 +1,0 @@
-prefix=/home/abcom/Downloads/Vs_Code/Rag_document_chatbot-main/venv/rch_env
-includedir=${prefix}/include
- 
-Name: XF86DGAProto
-Description: XF86DGA extension headers
-Version: 2.1
-Cflags: -I${includedir}

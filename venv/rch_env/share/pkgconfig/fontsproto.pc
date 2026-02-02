@@ -1,7 +1,0 @@
-prefix=/home/abcom/Downloads/Vs_Code/Rag_document_chatbot-main/venv/rch_env
-includedir=${prefix}/include
- 
-Name: FontsProto
-Description: Fonts extension headers
-Version: 2.1.3
-Cflags: -I${includedir}

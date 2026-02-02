@@ -1,7 +1,0 @@
-prefix=/home/abcom/Downloads/Vs_Code/Rag_document_chatbot-main/venv/rch_env
-includedir=${prefix}/include
- 
-Name: KBProto
-Description: KB extension headers
-Version: 1.0.7
-Cflags: -I${includedir}

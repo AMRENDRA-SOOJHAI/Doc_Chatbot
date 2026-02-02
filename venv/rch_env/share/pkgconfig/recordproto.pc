@@ -1,7 +1,0 @@
-prefix=/home/abcom/Downloads/Vs_Code/Rag_document_chatbot-main/venv/rch_env
-includedir=${prefix}/include
- 
-Name: RecordProto
-Description: Record extension headers
-Version: 1.14.2
-Cflags: -I${includedir}
