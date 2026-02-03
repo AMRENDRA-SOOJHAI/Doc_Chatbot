@@ -13,15 +13,6 @@ repos:
       - id: isort
         args: ["--profile", "black"]
 
-  # # Lint with pylint
-  # - repo: local
-  #   hooks:
-  #     - id: pylint
-  #       name: pylint
-  #       entry: bash -c 'pylint --rcfile=.pylintrc app/ main.py 2>&1 | tail -15 || true'
-  #       language: system
-  #       types: [python]
-
   # Run tests
   - repo: local
     hooks:

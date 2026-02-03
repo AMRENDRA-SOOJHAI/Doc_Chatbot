@@ -43,7 +43,6 @@ def generate_answer(question: str, context: str) -> str:
     chain = get_rag_chain()
     # Invoke with a system message prepended manually
     llm = get_llm()
-    from langchain_core.prompts import ChatPromptTemplate
 
     # Create chain with system message
     prompt = ChatPromptTemplate.from_messages(
