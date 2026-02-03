@@ -1,7 +1,7 @@
 # app/rag_graph.py
 
-from app.retriever import retrieve
 from app.generator import generate_answer
+from app.retriever import retrieve
 
 
 def compute_confidence(sim_scores: list[float]) -> float:
@@ -19,13 +19,13 @@ def compute_confidence(sim_scores: list[float]) -> float:
 def rag(question, documents, doc_embeddings, k=2):
     """
     RAG pipeline using LCEL chains
-    
+
     Args:
         question: User's question
         documents: List of documents
         doc_embeddings: Pre-computed embeddings for documents
         k: Number of documents to retrieve
-    
+
     Returns:
         answer: Generated answer from LLM
         retrieved_docs: List of retrieved documents
@@ -36,7 +36,7 @@ def rag(question, documents, doc_embeddings, k=2):
 
     # Combine retrieved documents into context
     context = "\n".join(retrieved_docs)
-    
+
     # Generate answer using LCEL chain
     answer = generate_answer(question, context)
 

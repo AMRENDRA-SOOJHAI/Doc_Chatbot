@@ -2,17 +2,19 @@
 Main FastAPI application for RAG Chatbot
 Imports all necessary components and sets up the Uvicorn server
 """
-import time
+
 import logging
-from starlette.requests import Request
+import time
+
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from dotenv import load_dotenv
-from app.ingest import load_txt, load_pdf
-from app.retriever import embed_texts
-from app.rag_graph import rag
+from starlette.requests import Request
 
+from app.ingest import load_pdf, load_txt
+from app.rag_graph import rag
+from app.retriever import embed_texts
 
 # Load environment variables
 load_dotenv()
@@ -25,7 +27,7 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
-    openapi_url="/openapi.json"
+    openapi_url="/openapi.json",
 )
 
 # Add CORS middleware
@@ -44,6 +46,7 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(message)s",
 )
 logger = logging.getLogger("rag-api")
+
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -72,7 +75,6 @@ async def log_requests(request: Request, call_next):
     return response
 
 
-
 # Load documents and embeddings at module level
 print("\n📚 Loading documents and building index...")
 try:
@@ -80,27 +82,31 @@ try:
     docs_pdf = load_pdf("data/doc.pdf")
     DOCUMENTS = docs_txt + docs_pdf
     DOC_EMBEDDINGS = embed_texts(DOCUMENTS)
-    print(f"✓ Index built with {len(DOCUMENTS)} documents (Text: {len(docs_txt)}, PDF: {len(docs_pdf)})\n")
+    print(
+        f"✓ Index built with {len(DOCUMENTS)} documents (Text: {len(docs_txt)}, PDF: {len(docs_pdf)})\n"
+    )
 except Exception as e:
     print(f"⚠️  Error loading documents: {e}\n")
     DOCUMENTS = []
     DOC_EMBEDDINGS = None
 
+
 @app.on_event("startup")
 async def startup_event():
     """Startup event (documents already loaded at module level)"""
-    pass
 
 
 # Pydantic models
 class QuestionRequest(BaseModel):
     """Request model for asking questions"""
+
     question: str
     k: int = 2  # Number of context documents to retrieve
 
 
 class QuestionResponse(BaseModel):
     """Response model for question answers"""
+
     question: str
     k: int
     answer: str
@@ -115,7 +121,7 @@ def home():
     return {
         "status": "✓ RAG Chatbot API is running",
         "docs": "/docs",
-        "message": "Go to /docs for Swagger UI to test the API"
+        "message": "Go to /docs for Swagger UI to test the API",
     }
 
 
@@ -126,7 +132,11 @@ def health_check():
         "status": "healthy" if DOCUMENTS else "documents_not_loaded",
         "documents_loaded": len(DOCUMENTS) if DOCUMENTS else 0,
         "embeddings_ready": DOC_EMBEDDINGS is not None,
-        "message": "Set OPENAI_API_KEY environment variable to enable document loading" if not DOCUMENTS else "Ready"
+        "message": (
+            "Set OPENAI_API_KEY environment variable to enable document loading"
+            if not DOCUMENTS
+            else "Ready"
+        ),
     }
 
 
@@ -134,11 +144,11 @@ def health_check():
 def ask_question(payload: QuestionRequest):
     """
     Ask a question to the RAG chatbot
-    
+
     Parameters:
     - question: The question to ask
     - k: Number of context documents to retrieve (default: 2)
-    
+
     Returns:
     - question: The User asked question?
     - k: Number of retrieved contexts
@@ -152,25 +162,22 @@ def ask_question(payload: QuestionRequest):
             "k": payload.k,
             "answer": "Error: Documents not loaded. Check your .env file and ensure OPENAI_API_KEY is set.",
             "contexts": [],
-            "confidence": 0.0
+            "confidence": 0.0,
         }
-    
+
     if not payload.question or not payload.question.strip():
         return {
             "question": payload.question,
             "k": payload.k,
             "answer": "Please provide a valid question.",
             "contexts": [],
-            "confidence": 0.0
+            "confidence": 0.0,
         }
-    
+
     try:
         # Get RAG response
         answer, contexts, confidence = rag(
-            payload.question,
-            DOCUMENTS,
-            DOC_EMBEDDINGS,
-            k=payload.k
+            payload.question, DOCUMENTS, DOC_EMBEDDINGS, k=payload.k
         )
 
         if confidence < 0.25 or not contexts:
@@ -179,7 +186,7 @@ def ask_question(payload: QuestionRequest):
                 "k": payload.k,
                 "answer": "Sorry, your question is not related to the uploaded document, so I can't answer it.",
                 "contexts": [],
-                "confidence": float(confidence)
+                "confidence": float(confidence),
             }
 
         return {
@@ -187,7 +194,7 @@ def ask_question(payload: QuestionRequest):
             "k": payload.k,
             "answer": answer,
             "contexts": contexts,
-            "confidence": float(confidence)
+            "confidence": float(confidence),
         }
     except Exception as e:
         return {
@@ -195,7 +202,7 @@ def ask_question(payload: QuestionRequest):
             "k": payload.k,
             "answer": f"Error processing question: {str(e)}",
             "contexts": [],
-            "confidence": 0.0
+            "confidence": 0.0,
         }
 
 
@@ -204,27 +211,23 @@ def get_stats():
     """Get statistics about the loaded documents"""
     return {
         "total_documents": len(DOCUMENTS) if DOCUMENTS else 0,
-        "embedding_dimension": DOC_EMBEDDINGS.shape[1] if DOC_EMBEDDINGS is not None else 0,
-        "total_embeddings": len(DOC_EMBEDDINGS) if DOC_EMBEDDINGS is not None else 0
+        "embedding_dimension": (
+            DOC_EMBEDDINGS.shape[1] if DOC_EMBEDDINGS is not None else 0
+        ),
+        "total_embeddings": len(DOC_EMBEDDINGS) if DOC_EMBEDDINGS is not None else 0,
     }
 
 
 # Run with: uvicorn main:app --reload
 if __name__ == "__main__":
     import uvicorn
-    
-    print("\n" + "="*60)
+
+    print("\n" + "=" * 60)
     print("🚀 Starting RAG Chatbot Server...")
-    print("="*60)
+    print("=" * 60)
     print("📚 Documents loaded:", len(DOCUMENTS))
     print("🔗 Swagger UI: http://localhost:8000/docs")
     print("📖 ReDoc: http://localhost:8000/redoc")
-    print("="*60 + "\n")
-    
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        log_level="info"
-    )
+    print("=" * 60 + "\n")
+
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, log_level="info")

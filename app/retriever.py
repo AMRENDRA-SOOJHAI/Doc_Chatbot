@@ -1,11 +1,13 @@
 # app/retriever.py
 
 import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
 from langchain_openai import OpenAIEmbeddings
+from sklearn.metrics.pairwise import cosine_similarity
+
 from app.ingest import load_documents
 
 _embeddings_model = None
+
 
 def get_embeddings_model():
     """Get or create embeddings model lazily"""
