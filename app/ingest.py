@@ -48,7 +48,7 @@ def ingest_to_milvus():
 
     # chunking
     splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=100)
-    docs = splitter.split_documents(docs)
+    docs = splitter.create_documents(docs)
 
     embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 

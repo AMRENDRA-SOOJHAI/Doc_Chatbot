@@ -41,7 +41,6 @@ Question:
 
 def generate_answer(question: str, context: str) -> str:
     chain = get_rag_chain()
-    # Invoke with a system message prepended manually
     llm = get_llm()
 
     # Create chain with system message

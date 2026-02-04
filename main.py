@@ -3,11 +3,12 @@ Main FastAPI application for RAG Chatbot
 Imports all necessary components and sets up the Uvicorn server
 """
 
+import asyncio
 import logging
 import time
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from starlette.requests import Request
@@ -51,49 +52,47 @@ logger = logging.getLogger("rag-api")
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start_time = time.time()
-
-    #  Read body for POST/PUT/PATCH
-    body_text = ""
-    if request.method in ["POST", "PUT"]:
-        try:
-            body_bytes = await request.body()
-            body_text = body_bytes.decode("utf-8")
-        except Exception:
-            body_text = "[Could not read body]"
-
     response = await call_next(request)
     process_time = time.time() - start_time
+
+    content_length = request.headers.get("content-length", "0")
 
     #  Log EVERYTHING
     logger.info(
         f"{request.method} {request.url.path} | "
         f"Status={response.status_code} | "
         f"Time={process_time:.3f}s | "
-        f"Body={body_text}"
+        f"Body={content_length}"
     )
 
     return response
 
 
-# Load documents and embeddings at module level
-print("\n📚 Loading documents and building index...")
-try:
+# Document store initialized on startup
+DOCUMENTS: list[str] = []
+DOC_EMBEDDINGS = None
+Confidence_threshold = 0.25
+
+
+def load_documents_and_embeddings():
+    """
+    Load documents from PDF/TXT and create embeddings once at startup
+    """
     docs_txt = load_txt("data/input.txt")
     docs_pdf = load_pdf("data/doc.pdf")
     DOCUMENTS = docs_txt + docs_pdf
     DOC_EMBEDDINGS = embed_texts(DOCUMENTS)
-    print(
-        f"✓ Index built with {len(DOCUMENTS)} documents (Text: {len(docs_txt)}, PDF: {len(docs_pdf)})\n"
-    )
-except Exception as e:
-    print(f"⚠️  Error loading documents: {e}\n")
-    DOCUMENTS = []
-    DOC_EMBEDDINGS = None
+
+    return DOCUMENTS, DOC_EMBEDDINGS
 
 
 @app.on_event("startup")
 async def startup_event():
     """Startup event (documents already loaded at module level)"""
+    global DOCUMENTS, DOC_EMBEDDINGS
+    logger.info("Loading documents and building index...")
+    DOCUMENTS, DOC_EMBEDDINGS = await asyncio.to_thread(load_documents_and_embeddings)
+    logger.info("Documents loaded: %s", len(DOCUMENTS))
 
 
 # Pydantic models
@@ -128,15 +127,12 @@ def home():
 @app.get("/health", tags=["Health"])
 def health_check():
     """Health check endpoint"""
+    ready = bool(DOCUMENTS) and DOC_EMBEDDINGS is not None
     return {
         "status": "healthy" if DOCUMENTS else "documents_not_loaded",
         "documents_loaded": len(DOCUMENTS) if DOCUMENTS else 0,
         "embeddings_ready": DOC_EMBEDDINGS is not None,
-        "message": (
-            "Set OPENAI_API_KEY environment variable to enable document loading"
-            if not DOCUMENTS
-            else "Ready"
-        ),
+        "message": "Ready" if ready else "Documents or embeddings not loaded",
     }
 
 
@@ -150,60 +146,54 @@ def ask_question(payload: QuestionRequest):
     - k: Number of context documents to retrieve (default: 2)
 
     Returns:
-    - question: The User asked question?
+    - question: The user asked question
     - k: Number of retrieved contexts
-    - answer: The generated answer from the LLM based on retrieved contexts.
+    - answer: The generated answer from the LLM based on retrieved contexts
     - contexts: List of retrieved relevant documents
     - confidence: Confidence score based on similarity scores (0-1)
     """
-    if not DOCUMENTS:
-        return {
-            "question": payload.question,
-            "k": payload.k,
-            "answer": "Error: Documents not loaded. Check your .env file and ensure OPENAI_API_KEY is set.",
-            "contexts": [],
-            "confidence": 0.0,
-        }
+    # Validate documents are loaded
+    if not DOCUMENTS or DOC_EMBEDDINGS is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Documents or embeddings not loaded. Check your configuration.",
+        )
 
+    # Validate question
     if not payload.question or not payload.question.strip():
-        return {
-            "question": payload.question,
-            "k": payload.k,
-            "answer": "Please provide a valid question.",
-            "contexts": [],
-            "confidence": 0.0,
-        }
+        raise HTTPException(
+            status_code=400,
+            detail="Please provide a valid question.",
+        )
 
     try:
-        # Get RAG response
+        # Get RAG response (retrieve documents and generate answer)
         answer, contexts, confidence = rag(
             payload.question, DOCUMENTS, DOC_EMBEDDINGS, k=payload.k
         )
 
-        if confidence < 0.25 or not contexts:
-            return {
-                "question": payload.question,
-                "k": payload.k,
-                "answer": "Sorry, your question is not related to the uploaded document, so I can't answer it.",
-                "contexts": [],
-                "confidence": float(confidence),
-            }
+        # Check if confidence is too low
+        if confidence < Confidence_threshold or not contexts:
+            raise HTTPException(
+                status_code=400,
+                detail="Sorry, your question is not related to the uploaded document.",
+            )
 
-        return {
-            "question": payload.question,
-            "k": payload.k,
-            "answer": answer,
-            "contexts": contexts,
-            "confidence": float(confidence),
-        }
+        return QuestionResponse(
+            question=payload.question,
+            k=payload.k,
+            answer=answer,
+            contexts=contexts,
+            confidence=float(confidence),
+        )
+    except HTTPException:
+        raise
     except Exception as e:
-        return {
-            "question": payload.question,
-            "k": payload.k,
-            "answer": f"Error processing question: {str(e)}",
-            "contexts": [],
-            "confidence": 0.0,
-        }
+        logger.exception("Error processing question: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail="Error processing question. Please try again later.",
+        )
 
 
 @app.get("/stats", tags=["Info"])
@@ -222,12 +212,11 @@ def get_stats():
 if __name__ == "__main__":
     import uvicorn
 
-    print("\n" + "=" * 60)
-    print("🚀 Starting RAG Chatbot Server...")
-    print("=" * 60)
-    print("📚 Documents loaded:", len(DOCUMENTS))
-    print("🔗 Swagger UI: http://localhost:8000/docs")
-    print("📖 ReDoc: http://localhost:8000/redoc")
-    print("=" * 60 + "\n")
+    logger.info("=" * 60)
+    logger.info("Starting RAG Chatbot Server...")
+    logger.info("Documents loaded: %s", len(DOCUMENTS))
+    logger.info("Swagger UI: http://localhost:8000/docs")
+    logger.info("ReDoc: http://localhost:8000/redoc")
+    logger.info("=" * 60)
 
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, log_level="info")
