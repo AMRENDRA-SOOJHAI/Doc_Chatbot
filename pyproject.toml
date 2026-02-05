@@ -12,7 +12,8 @@ dependencies = [
     "langchain-community>=0.4",
     "langchain-openai>=0.1",
     "fastapi>=0.110",
-    "pydantic>=2.7"
+    "pydantic>=2.7",
+    "scikit-learn (>=1.8.0,<2.0.0)"
 ]
 
 [tool.poetry]
