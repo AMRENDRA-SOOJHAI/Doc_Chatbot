@@ -33,6 +33,24 @@ def test_documents():
     return docs, embeddings
 
 
+@pytest.fixture
+def loaded_documents():
+    """Ensure documents/embeddings are set for endpoint tests."""
+    import main as main_module
+
+    original_docs = main_module.DOCUMENTS
+    original_embeddings = main_module.DOC_EMBEDDINGS
+
+    main_module.DOCUMENTS = ["Doc"]
+    main_module.DOC_EMBEDDINGS = np.zeros((1, 1))
+
+    try:
+        yield
+    finally:
+        main_module.DOCUMENTS = original_docs
+        main_module.DOC_EMBEDDINGS = original_embeddings
+
+
 # Confidence Tests
 class TestConfidence:
     """Confidence score computation tests"""
@@ -175,7 +193,7 @@ class TestEndpoints:
     """FastAPI endpoint tests"""
 
     @patch("main.rag")
-    def test_ask_success(self, mock_rag):
+    def test_ask_success(self, mock_rag, loaded_documents):
         from fastapi.testclient import TestClient
 
         from main import app
@@ -191,7 +209,7 @@ class TestEndpoints:
         assert data["confidence"] == 0.85
 
     @patch("main.rag")
-    def test_ask_low_confidence(self, mock_rag):
+    def test_ask_low_confidence(self, mock_rag, loaded_documents):
         from fastapi.testclient import TestClient
 
         from main import app
@@ -200,16 +218,18 @@ class TestEndpoints:
         client = TestClient(app)
 
         resp = client.post("/ask", json={"question": "Q?"})
-        assert "not related" in resp.json()["answer"].lower()
+        assert resp.status_code == 400
+        assert "not related" in resp.json()["detail"].lower()
 
-    def test_ask_empty_question(self):
+    def test_ask_empty_question(self, loaded_documents):
         from fastapi.testclient import TestClient
 
         from main import app
 
         client = TestClient(app)
         resp = client.post("/ask", json={"question": "   "})
-        assert "valid question" in resp.json()["answer"].lower()
+        assert resp.status_code == 400
+        assert "valid question" in resp.json()["detail"].lower()
 
     def test_home(self):
         from fastapi.testclient import TestClient
@@ -251,7 +271,7 @@ class TestErrorHandling:
     """Error handling tests"""
 
     @patch("main.rag")
-    def test_ask_exception(self, mock_rag):
+    def test_ask_exception(self, mock_rag, loaded_documents):
         from fastapi.testclient import TestClient
 
         from main import app
@@ -260,7 +280,8 @@ class TestErrorHandling:
         client = TestClient(app)
 
         resp = client.post("/ask", json={"question": "Q?"})
-        assert "Error processing" in resp.json()["answer"]
+        assert resp.status_code == 500
+        assert "Error processing" in resp.json()["detail"]
 
     @patch("main.rag")
     def test_ask_no_documents(self, mock_rag):
@@ -274,7 +295,8 @@ class TestErrorHandling:
             main_module.DOCUMENTS = None
             client = TestClient(app)
             resp = client.post("/ask", json={"question": "Q?"})
-            assert "Documents not loaded" in resp.json()["answer"]
+            assert resp.status_code == 503
+            assert "Documents or embeddings not loaded" in resp.json()["detail"]
         finally:
             main_module.DOCUMENTS = original
 

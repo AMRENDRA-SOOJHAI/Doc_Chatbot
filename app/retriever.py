@@ -4,7 +4,7 @@ import numpy as np
 from langchain_openai import OpenAIEmbeddings
 from sklearn.metrics.pairwise import cosine_similarity
 
-from app.ingest import load_txt
+from app.ingest import load_documents
 
 _embeddings_model = None
 
@@ -24,7 +24,7 @@ def embed_texts(texts: list[str]) -> np.ndarray:
 
 
 def build_index(path="input.txt"):
-    documents = load_txt(path)
+    documents = load_documents(path)
     doc_embeddings = embed_texts(documents)
     return documents, doc_embeddings
 
