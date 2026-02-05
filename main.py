@@ -10,12 +10,12 @@ import time
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 from starlette.requests import Request
 
 from app.ingest import load_pdf, load_txt
 from app.rag_graph import rag
 from app.retriever import embed_texts
+from app.validator import QuestionRequest, QuestionResponse
 
 # Load environment variables
 load_dotenv()
@@ -46,7 +46,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(message)s",
 )
-logger = logging.getLogger("rag-api")
+logger = logging.getLogger("ragchatbot-api")
 
 
 @app.middleware("http")
@@ -93,24 +93,6 @@ async def startup_event():
     logger.info("Loading documents and building index...")
     DOCUMENTS, DOC_EMBEDDINGS = await asyncio.to_thread(load_documents_and_embeddings)
     logger.info("Documents loaded: %s", len(DOCUMENTS))
-
-
-# Pydantic models
-class QuestionRequest(BaseModel):
-    """Request model for asking questions"""
-
-    question: str
-    k: int = 2  # Number of context documents to retrieve
-
-
-class QuestionResponse(BaseModel):
-    """Response model for question answers"""
-
-    question: str
-    k: int
-    answer: str
-    contexts: list[str]
-    confidence: float
 
 
 # Routes
