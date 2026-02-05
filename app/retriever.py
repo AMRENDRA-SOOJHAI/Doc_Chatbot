@@ -30,6 +30,23 @@ def build_index(path="input.txt"):
 
 
 def retrieve(query: str, documents, doc_embeddings, k=2):
+    if documents is None or doc_embeddings is None:
+        return [], []
+
+    doc_count = len(documents)
+    emb_count = len(doc_embeddings)
+    if doc_count == 0 or emb_count == 0:
+        return [], []
+
+    if doc_count != emb_count:
+        raise ValueError(
+            "Documents and embeddings length mismatch. Rebuild embeddings."
+        )
+
+    k = min(int(k), doc_count)
+    if k <= 0:
+        return [], []
+
     embeddings_model = get_embeddings_model()
     query_vector = np.array(embeddings_model.embed_query(query)).reshape(1, -1)
     scores = cosine_similarity(query_vector, doc_embeddings)[0]
