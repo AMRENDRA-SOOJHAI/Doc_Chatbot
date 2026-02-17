@@ -82,7 +82,8 @@ def load_documents_and_embeddings():
     docs_pdf = load_pdf("data/doc.pdf")
     DOCUMENTS = docs_txt + docs_pdf
     DOC_EMBEDDINGS = embed_texts(DOCUMENTS)
-
+    print(f"Loaded {DOCUMENTS} documents and created embeddings.")
+    print(f"{DOC_EMBEDDINGS}")
     return DOCUMENTS, DOC_EMBEDDINGS
 
 

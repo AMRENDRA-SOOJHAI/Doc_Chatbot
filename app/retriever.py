@@ -10,7 +10,7 @@ _embeddings_model = None
 
 
 def get_embeddings_model():
-    """Get or create embeddings model lazily"""
+    """Get or create embeddings model easily"""
     global _embeddings_model
     if _embeddings_model is None:
         _embeddings_model = OpenAIEmbeddings(model="text-embedding-3-small")

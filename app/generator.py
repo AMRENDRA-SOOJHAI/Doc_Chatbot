@@ -41,25 +41,5 @@ Question:
 
 def generate_answer(question: str, context: str) -> str:
     chain = get_rag_chain()
-    llm = get_llm()
 
-    # Create chain with system message
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            ("system", "You are a helpful assistant."),
-            (
-                "human",
-                """Answer using ONLY the context below.
-
-Context:
-{context}
-
-Question:
-{question}
-""",
-            ),
-        ]
-    )
-
-    chain = prompt | llm | StrOutputParser()
     return chain.invoke({"context": context, "question": question})
