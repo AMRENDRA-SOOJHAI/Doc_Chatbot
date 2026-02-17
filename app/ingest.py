@@ -1,12 +1,11 @@
 # app/ingest.py
 
 import os
-from dotenv import load_dotenv
 
-from langchain_openai import OpenAIEmbeddings
-from langchain_core.documents import Document
-from langchain_community.vectorstores import Milvus
+from dotenv import load_dotenv
 from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.vectorstores import Milvus
+from langchain_openai import OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 load_dotenv()
@@ -22,7 +21,7 @@ def load_txt(path: str) -> list[str]:
 
 def load_documents(path: str) -> list[str]:
     """Load documents from TXT file"""
-    if path.endswith('.txt'):
+    if path.endswith(".txt"):
         return load_txt(path)
     else:
         raise ValueError(f"Unsupported file format: {path}")
@@ -33,7 +32,7 @@ def load_pdf(path: str) -> list[str]:
     """Load text from a PDF file and return as list of strings"""
     loader = PyPDFLoader(path)
     docs = loader.load()
-    
+
     # Extract text content from Document objects
     return [doc.page_content for doc in docs]
 
@@ -49,7 +48,7 @@ def ingest_to_milvus():
 
     # chunking
     splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=100)
-    docs = splitter.split_documents(docs)
+    docs = splitter.create_documents(docs)
 
     embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 

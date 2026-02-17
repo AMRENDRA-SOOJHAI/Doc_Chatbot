@@ -9,3 +9,5 @@ data/*.pkl
 data/*.db
 venv/
 *.pyc.venv/
+.coverage
+.pytest_cache/
